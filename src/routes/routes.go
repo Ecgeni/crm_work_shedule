@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"../services"
+	"employee/src/services"
 	"strconv"
 )
 

@@ -1,31 +1,60 @@
 package services
 
-import "../repo"
+import (
+	"employee/src/repo"
+	"time"
+)
 
 type WorkShedulerService struct {
 	repo repo.SheduleRepository
 }
 
-type sheduleOnDay struct {
-	Day string                   `json:"day"`
-	TimeRanges []map[string]int  `json:"timeRanges"`
+type SheduleOnDay struct {
+	Day 	   string				`json:"day"`
+	TimeRanges []map[string]int		`json: "timeRanges"`
 }
 
-type sheduleResponse struct {
-	Shedule []sheduleOnDay       `json:"shedule"`
+type SheduleResponse struct {
+	Shedule []*SheduleOnDay         `json:"shedule"`
 }
 
 func NewWorkShedulerService(repo repo.SheduleRepository) *WorkShedulerService {
 	return &WorkShedulerService{repo: repo}
 }
 
-func (w *WorkShedulerService) GetShedule(id int, startDate string, endDate string) *sheduleResponse {
-	sheduleById := w.repo.GetById(id)
-	startEnd := map[string]int{"start": sheduleById, "end":sheduleById}
-	timeRange := []map[string]int{startEnd}
-	day := sheduleOnDay{Day: "2020-01-01", TimeRanges: timeRange}
-	dday := []sheduleOnDay{day}
-	shedule := sheduleResponse{Shedule: dday}
+func (w *WorkShedulerService) GetShedule(id int, startDate string, endDate string) *SheduleResponse {
+	currentShedules := w.calculateShedule(startDate, endDate, w.repo.GetSheduleById(id), w.repo.GetWeekendsById(id));
+	shedule := SheduleResponse{Shedule: currentShedules}
 
 	return &shedule
+}
+
+func (w *WorkShedulerService) calculateShedule(startDate string, endDate string, shedule []map[string]int, weekends []map[string]string) []*SheduleOnDay {
+	var result []*SheduleOnDay
+	result = make([]*SheduleOnDay, 1)
+	var isWeekendDay bool
+	startTime, _ := time.Parse("2006-01-02", startDate)
+	endTime, _ := time.Parse("2006-01-02", endDate)
+
+	timeNextDay := startTime.Add(time.Hour * 24)
+	
+	for timeNextDay.Equal(endTime) {
+		timeNextDay := timeNextDay.Add(time.Hour * 24)
+		isWeekendDay = false
+
+		for _, period := range weekends {
+			startPeriod, _ := time.Parse("2006-01-02", period["start"])
+			endPeriod, _ := time.Parse("2006-01-02", period["end"])
+			if timeNextDay.After(startPeriod) && timeNextDay.Before(endPeriod) {
+				isWeekendDay = true
+				break
+			} 
+		}
+
+		if !isWeekendDay {
+			result = append(result, &SheduleOnDay{Day: timeNextDay.Format("2006-01-02"), TimeRanges: shedule})
+		}
+	}	
+	 
+	return result
 }
